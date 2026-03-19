@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ChatGPT 批量注册 — 管理面板</title>
+  <meta name="description" content="ChatGPT批量注册管理面板，支持Worker邮箱、多Team邀请、OAuth导出">
+  <link rel="stylesheet" href="/static/mac_style.css?v=3">
+</head>
+
+<body>
+
+  <div class="bg"></div>
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a29bfe" stroke-width="2">
+        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      </svg>
+      <h1>ChatGPT 批量注册</h1>
+    </div>
+    <div class="status-pill" id="statusPill">
+      <div class="dot"></div>
+      <span id="statusTxt">系统就绪</span>
+    </div>
+  </header>
+
+  <!-- ── Page grid ── -->
+  <div class="page">
+
+    <!-- ══ LEFT SIDEBAR ══ -->
+    <aside class="sidebar">
+
+      <!-- 邮箱设置 -->
+      <div class="card">
+        <div class="card-head" onclick="toggleCard(this)">
+          <span class="title">✉️ 邮箱设置</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>邮箱提供商</label>
+            <input type="hidden" id="cfgMailProvider" value="duckmail">
+            <div class="dropdown" id="mailProviderDD">
+              <div class="dropdown-trigger" onclick="this.parentElement.classList.toggle('open')">
+                <span class="dropdown-label" id="mailProviderLabel">DuckMail</span>
+                <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+              <div class="dropdown-menu">
+                <div class="dropdown-item active" data-value="duckmail" onclick="pickDropdown(this)">
+                  <span>DuckMail</span><svg class="dropdown-check" width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <div class="dropdown-item" data-value="cloudflare" onclick="pickDropdown(this)">
+                  <span>CloudflareMail</span><svg class="dropdown-check" width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- DuckMail fields -->
+          <div id="duckmail-fields">
+            <div class="form-row">
+              <label>Worker API Base</label>
+              <input id="cfgMailApi" class="inp" placeholder="https://your-worker.xxxxx.workers.dev/api">
+            </div>
+            <div class="form-row">
+              <label>邮箱域名</label>
+              <input id="cfgMailDomain" class="inp" placeholder="duckmail.sbs">
+            </div>
+            <div class="form-row">
+              <label>Admin 密码 / Bearer</label>
+              <input id="cfgMailBearer" class="inp" type="password" placeholder="your_admin_password">
+            </div>
+          </div>
+          <!-- CloudflareMail fields -->
+          <div id="cfmail-fields" style="display:none">
+            <div class="form-row">
+              <label>CF Mail API Base</label>
+              <input id="cfgCfMailApi" class="inp" placeholder="https://your-worker.xxxxx.workers.dev/api">
+            </div>
+            <div class="form-row">
+              <label>CF 邮箱域名</label>
+              <input id="cfgCfMailDomain" class="inp" placeholder="example.com 或多个域名用逗号分隔">
+            </div>
+            <div class="form-row">
+              <label>Admin 密码</label>
+              <input id="cfgCfMailPassword" class="inp" type="password" placeholder="admin_password">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team 管理 -->
+      <div class="card">
+        <div class="card-head" onclick="toggleCard(this)">
+          <span class="title">👥 Team 管理 &nbsp;<span id="teamCnt" style="font-size:.75rem;opacity:.6;font-weight:400">0
+              个</span></span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div id="teamList"></div>
+          <button class="btn btn-ghost" style="width:100%" onclick="addTeam()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 5v14m-7-7h14" />
+            </svg>
+            添加 Team 账户
+          </button>
+          <p style="font-size:.75rem;color:var(--text-secondary);margin-top:2px">
+            每个 Team 可配置 auth_token 和 session_token，用于向注册账号发送邀请。
+          </p>
+        </div>
+      </div>
+
+      <!-- 代理 -->
+      <div class="card">
+        <div class="card-head" onclick="toggleCard(this)">
+          <span class="title">🌐 网络代理</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>HTTP / SOCKS5 代理</label>
+            <input id="cfgProxy" class="inp" placeholder="http://127.0.0.1:xxxx（留空不用）">
+          </div>
+        </div>
+      </div>
+
+      <!-- OAuth -->
+      <div class="card">
+        <div class="card-head" onclick="toggleCard(this)">
+          <span class="title">🔐 OAuth / Codex</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="toggle-wrap">
+            <span class="label">启用 OAuth 获取 Token</span>
+            <label class="toggle">
+              <input type="checkbox" id="cfgOauthEnable" checked>
+              <div class="track"></div>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>OAuth Issuer</label>
+            <input id="cfgOauthIssuer" class="inp" placeholder="https://auth.openai.com">
+          </div>
+          <div class="form-row">
+            <label>OAuth Client ID</label>
+            <input id="cfgOauthClient" class="inp" placeholder="app_EMoamEEZ73f0CkXaXp7hrann">
+          </div>
+        </div>
+      </div>
+
+      <!-- CPA 推送 -->
+      <div class="card">
+        <div class="card-head" onclick="toggleCard(this)">
+          <span class="title">📤 CPA 推送</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>CPA 地址</label>
+            <input id="cfgSub2Url" class="inp" placeholder="https://cpa.example.com">
+          </div>
+          <div class="form-row">
+            <label>CPA Token</label>
+            <input id="cfgSub2Token" class="inp" type="password">
+          </div>
+          <div class="toggle-wrap">
+            <span class="label">CPA 推送使用代理</span>
+            <label class="toggle">
+              <input type="checkbox" id="cfgCpaUseProxy" onchange="_checkDirty()">
+              <div class="track"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 自动保活 -->
+      <div class="card">
+        <div class="card-head" onclick="toggleCard(this)">
+          <span class="title">🔄 自动保活</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="toggle-wrap">
+            <span class="label">启用自动保活</span>
+            <label class="toggle">
+              <input type="checkbox" id="cfgKeepaliveEnabled" onchange="_checkDirty()">
+              <div class="track"></div>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>保活间隔（秒）</label>
+            <input id="cfgKeepaliveInterval" class="inp" type="number" value="3600" min="300"
+              placeholder="默认 3600（1小时）" oninput="_checkDirty()">
+          </div>
+          <div class="form-row">
+            <label>目标账号数量</label>
+            <input id="cfgKeepaliveTarget" class="inp" type="number" value="20" min="0"
+              placeholder="默认 20" oninput="_checkDirty()">
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-blue" id="btnSave" disabled style="width:100%;height:42px;font-size:.95rem"
+        onclick="saveConfig()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+          <polyline points="17 21 17 13 7 13 7 21" />
+          <polyline points="7 3 7 8 15 8" />
+        </svg>
+        保存所有配置
+      </button>
+
+    </aside>
+
+    <!-- ══ MAIN CONTENT ══ -->
+    <main class="main">
+
+      <!-- 控制面板 -->
+      <div class="card" style="padding:18px 20px">
+        <div style="display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap">
+          <div class="form-row" style="width:110px">
+            <label>注册数量</label>
+            <input id="regCount" class="inp" type="number" value="1" min="1">
+          </div>
+          <div class="form-row" style="width:110px">
+            <label>并发线程</label>
+            <input id="regWorkers" class="inp" type="number" value="1" min="1">
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn btn-green" id="btnStart" onclick="startTask()" style="height:40px;padding:0 28px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+            开始注册
+          </button>
+          <button class="btn btn-red" id="btnStop" onclick="stopTask()" style="display:none;height:40px;padding:0 28px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="6" y="6" width="12" height="12" />
+            </svg>
+            停止任务
+          </button>
+        </div>
+      </div>
+
+      <!-- 保活控制面板 -->
+      <div class="card" style="padding:18px 20px" id="keepalivePanel">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div style="font-size:.95rem;font-weight:600;margin-bottom:4px">🔄 自动保活</div>
+            <div style="font-size:.8rem;color:var(--text-secondary)" id="keepaliveInfo">
+              <span id="kaStatus">已停止</span>
+              <span id="kaDetail"></span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-green" id="btnKaStart" onclick="startKeepalive()" style="height:36px;padding:0 18px;font-size:.85rem">
+              ▶ 启动保活
+            </button>
+            <button class="btn btn-red" id="btnKaStop" onclick="stopKeepalive()" style="display:none;height:36px;padding:0 18px;font-size:.85rem">
+              ⏹ 停止保活
+            </button>
+          </div>
+        </div>
+        <div id="kaResult" style="display:none;margin-top:10px;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:.8rem">
+        </div>
+      </div>
+
+      <!-- 实时日志 -->
+      <div class="card">
+        <div class="card-head" style="cursor:default">
+          <span class="title">💻 实时日志</span>
+          <button class="icon-btn" onclick="clearLog()" title="清空">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+        </div>
+        <div class="terminal" id="logArea">
+          <div class="log">System initialized. Waiting for task...</div>
+        </div>
+      </div>
+
+      <!-- 已注册账号库 -->
+      <div class="card">
+        <div class="card-head" style="cursor:default">
+          <span class="title">📊 已注册账号库</span>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-ghost" onclick="exportOAuth('all','all')">📦 导出全部</button>
+          <button class="btn btn-ghost" onclick="exportOAuth('selected','all')">📥 导出选中</button>
+          <button class="btn btn-ghost" onclick="syncCPA()" id="btnSync">🔄 同步到 CPA</button>
+          <button class="btn btn-ghost" onclick="refreshStatus()" id="btnRefreshStatus" title="刷新账号列表和同步状态">🔃
+            刷新状态</button>
+          <div class="toolbar-spacer"></div>
+          <button class="btn btn-ghost-danger" onclick="deleteAccounts('selected')">🗑 删除选中</button>
+          <button class="btn btn-red" onclick="deleteAccounts('all')">⚠️ 清空全部</button>
+        </div>
+        <div class="tbl-wrap" style="margin-top:12px;max-height:520px;overflow-y:auto">
+          <table>
+            <thead style="position:sticky;top:0;z-index:1;background:var(--card)">
+              <tr>
+                <th style="width:36px;text-align:center"><input type="checkbox" class="chk" id="selAll"
+                    onchange="toggleAll()"></th>
+                <th style="width:50px">#</th>
+                <th>邮箱</th>
+                <th>密码</th>
+                <th>OAuth</th>
+                <th>CPA</th>
+              </tr>
+            </thead>
+            <tbody id="accBody">
+              <tr>
+                <td colspan="6" class="empty">正在加载...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div
+          style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px 4px;font-size:.82rem;color:var(--dim)"
+          id="paginationBar">
+          <span id="pageInfo"></span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-ghost" style="padding:4px 12px;font-size:.8rem" onclick="prevPage()">◀ 上一页</button>
+            <span id="pageCur">1</span> / <span id="pageTotal">1</span>
+            <button class="btn btn-ghost" style="padding:4px 12px;font-size:.8rem" onclick="nextPage()">▶ 下一页</button>
+            <select id="pageSize" class="inp" style="width:70px;padding:3px 6px;font-size:.8rem"
+              onchange="changePageSize()">
+              <option value="20">20</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="999999">全部</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <div class="toast-wrap" id="toasts"></div>
+
+  <script>
+    let sseSource = null;
+    let accs = [];
+    let syncMap = {};
+    let curPage = 1;
+    let perPage = 50;
+
+    // ── Collapse ──
+    function toggleCard(head) {
+      head.classList.toggle('collapsed');
+      head.nextElementSibling.classList.toggle('hidden');
+    }
+
+    // ── Toast ──
+    function toast(msg, type = 'ok') {
+      const w = document.getElementById('toasts');
+      const d = document.createElement('div');
+      d.className = `toast ${type}`;
+      d.innerHTML = `<span class="toast-ico">${type === 'ok' ? '✓' : '✕'}</span><span>${msg}</span>`;
+      w.appendChild(d);
+      setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 280); }, 3000);
+    }
+
+    // ── Config ──
+    let _cfgSnapshot = '';
+
+    function _configFingerprint() {
+      return JSON.stringify(collectConfig());
+    }
+    function _checkDirty() {
+      const btn = document.getElementById('btnSave');
+      btn.disabled = (_configFingerprint() === _cfgSnapshot);
+    }
+
+    async function loadConfig() {
+      try {
+        const cfg = await fetch('/api/config').then(r => r.json());
+        // 邮箱提供商
+        setCustomSelect(cfg.mail_provider || 'duckmail');
+        // DuckMail
+        v('cfgMailApi', cfg.duckmail_api_base || '');
+        v('cfgMailDomain', cfg.duckmail_domain || '');
+        v('cfgMailBearer', cfg.duckmail_bearer || '');
+        // CloudflareMail
+        v('cfgCfMailApi', cfg.cf_mail_api_base || '');
+        v('cfgCfMailDomain', cfg.cf_mail_domain || '');
+        v('cfgCfMailPassword', cfg.cf_mail_admin_password || cfg.cf_mail_jwt_secret || '');
+        // 其他
+        v('cfgProxy', cfg.proxy || '');
+        document.getElementById('cfgOauthEnable').checked = (cfg.enable_oauth !== false);
+        v('cfgOauthIssuer', cfg.oauth_issuer || 'https://auth.openai.com');
+        v('cfgOauthClient', cfg.oauth_client_id || 'app_EMoamEEZ73f0CkXaXp7hrann');
+        v('cfgSub2Url', cfg.SUB2API_URL || '');
+        v('cfgSub2Token', cfg.SUB2API_TOKEN || '');
+        document.getElementById('cfgCpaUseProxy').checked = (cfg.cpa_use_proxy === true);
+        // 保活
+        document.getElementById('cfgKeepaliveEnabled').checked = (cfg.keepalive_enabled === true);
+        v('cfgKeepaliveInterval', cfg.keepalive_interval || 3600);
+        v('cfgKeepaliveTarget', cfg.keepalive_target_count || 20);
+        // Teams
+        document.getElementById('teamList').innerHTML = '';
+        (cfg.teams || []).forEach(addTeam);
+        refreshTeamCnt();
+        // 保存快照
+        _cfgSnapshot = _configFingerprint();
+        _checkDirty();
+      } catch (e) { toast('加载配置失败', 'err'); }
+    }
+    function v(id, val) { document.getElementById(id).value = val; }
+
+    function collectConfig() {
+      const teams = [];
+      document.querySelectorAll('.team-card').forEach(c => {
+        teams.push({
+          name: c.querySelector('.t-name').value,
+          account_id: c.querySelector('.t-accid').value,
+          auth_token: c.querySelector('.t-auth').value,
+          session_token: c.querySelector('.t-sess').value,
+          max_invites: parseInt(c.querySelector('.t-max').value) || 4,
+        });
+      });
+      return {
+        mail_provider: g('cfgMailProvider'),
+        duckmail_api_base: g('cfgMailApi'),
+        duckmail_domain: g('cfgMailDomain'),
+        duckmail_bearer: g('cfgMailBearer'),
+        cf_mail_api_base: g('cfgCfMailApi'),
+        cf_mail_domain: g('cfgCfMailDomain'),
+        cf_mail_admin_password: g('cfgCfMailPassword'),
+        proxy: g('cfgProxy'),
+        enable_oauth: document.getElementById('cfgOauthEnable').checked,
+        oauth_issuer: g('cfgOauthIssuer'),
+        oauth_client_id: g('cfgOauthClient'),
+        SUB2API_URL: g('cfgSub2Url'),
+        SUB2API_TOKEN: g('cfgSub2Token'),
+        cpa_use_proxy: document.getElementById('cfgCpaUseProxy').checked,
+        keepalive_enabled: document.getElementById('cfgKeepaliveEnabled').checked,
+        keepalive_interval: parseInt(g('cfgKeepaliveInterval')) || 3600,
+        keepalive_target_count: parseInt(g('cfgKeepaliveTarget')) || 20,
+        teams,
+      };
+    }
+    function g(id) { return document.getElementById(id).value; }
+
+    function toggleMailProvider() {
+      const p = document.getElementById('cfgMailProvider').value;
+      document.getElementById('duckmail-fields').style.display = (p === 'duckmail') ? '' : 'none';
+      document.getElementById('cfmail-fields').style.display = (p === 'cloudflare') ? '' : 'none';
+      _checkDirty();
+    }
+
+    // Dropdown
+    function pickDropdown(item) {
+      const dd = item.closest('.dropdown');
+      dd.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      dd.querySelector('.dropdown-label').textContent = item.querySelector('span').textContent;
+      document.getElementById('cfgMailProvider').value = item.dataset.value;
+      dd.classList.remove('open');
+      toggleMailProvider();
+    }
+    function setCustomSelect(val) {
+      const item = document.querySelector(`.dropdown-item[data-value="${val}"]`);
+      if (item) pickDropdown(item);
+    }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.dropdown')) document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+    });
+
+    async function saveConfig() {
+      const res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collectConfig()) });
+      const d = await res.json();
+      if (d.ok) {
+        toast('配置已保存 ✓');
+        _cfgSnapshot = _configFingerprint();
+        _checkDirty();
+      } else toast('保存失败', 'err');
+    }
+
+    // ── Team Management ──
+    function addTeam(data) {
+      const idx = Date.now();
+      const d = document.createElement('div');
+      d.className = 'team-card';
+      d.id = 'tc_' + idx;
+      d.innerHTML = `
+    <div class="team-card-top">
+      <span class="team-lbl">TEAM #${document.querySelectorAll('.team-card').length + 1}</span>
+      <button class="icon-btn danger" onclick="document.getElementById('tc_${idx}').remove();refreshTeamCnt()" title="删除">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-row">
+      <label>Team 名称</label>
+      <input class="inp t-name" value="${esc(data?.name || '')}" placeholder="My Team">
+    </div>
+    <div class="form-row">
+      <label>Account / Workspace ID</label>
+      <input class="inp t-accid" value="${esc(data?.account_id || '')}" placeholder="d73d36e2-977d-45db-8022-...">
+    </div>
+    <div class="form-row">
+      <label>Auth Token &nbsp;<span style="opacity:.45;font-size:.72rem">（用于发送邀请）</span></label>
+      <textarea class="inp t-auth" rows="3" placeholder="eyJhbGciOiJSUzI1NiIs...">${esc(data?.auth_token || '')}</textarea>
+    </div>
+    <div class="form-row">
+      <label>Session Token &nbsp;<span style="opacity:.45;font-size:.72rem">（用于刷新 access token）</span></label>
+      <textarea class="inp t-sess" rows="3" placeholder="eyJhbGciOiJkaXIiLCJlbmMi...">${esc(data?.session_token || '')}</textarea>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <label style="font-size:.78rem;color:var(--text-secondary)">最大邀请人数</label>
+      <input class="inp t-max" type="number" value="${data?.max_invites || 4}" min="1" style="width:80px;text-align:center">
+    </div>
+  `;
+      document.getElementById('teamList').appendChild(d);
+      refreshTeamCnt();
+    }
+    function refreshTeamCnt() {
+      const n = document.querySelectorAll('.team-card').length;
+      document.getElementById('teamCnt').textContent = n + ' 个';
+    }
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+    // ── Accounts ──
+    async function refreshAll() {
+      const btn = document.getElementById('btnRefresh');
+      btn.style.animation = 'spin .6s linear infinite';
+      try {
+        await Promise.all([loadAccounts(), loadSyncStatus()]);
+      } finally {
+        btn.style.animation = '';
+      }
+    }
+    async function refreshStatus() {
+      const btn = document.getElementById('btnRefreshStatus');
+      const orig = btn.textContent;
+      btn.textContent = '⏳ 刷新中...';
+      btn.disabled = true;
+      try {
+        await Promise.all([loadAccounts(), loadSyncStatus()]);
+        toast('状态已刷新 ✓');
+      } catch (e) {
+        toast('刷新失败', 'err');
+      } finally {
+        btn.textContent = orig;
+        btn.disabled = false;
+      }
+    }
+    async function loadAccounts() {
+      accs = await fetch('/api/accounts').then(r => r.json());
+      curPage = 1;
+      renderAccounts();
+    }
+    async function loadSyncStatus() {
+      try {
+        const d = await fetch('/api/sync-status').then(r => r.json());
+        if (d.ok && d.accounts) {
+          syncMap = {};
+          // 构建快速查找表：key = name 本身, 以及 @ 前缀
+          d.accounts.forEach(a => {
+            syncMap[a.name] = a.status;
+            const atIdx = a.name.indexOf('@');
+            if (atIdx > 0) syncMap[a.name.substring(0, atIdx)] = a.status;
+          });
+          renderAccounts();
+        }
+      } catch (e) { /* ignore */ }
+    }
+    function _lookupSync(email) {
+      // O(1) 直接查找: 先精确匹配, 再按前缀匹配
+      if (syncMap[email]) return syncMap[email];
+      const atIdx = email.indexOf('@');
+      if (atIdx > 0) {
+        const prefix = email.substring(0, atIdx);
+        if (syncMap[prefix]) return syncMap[prefix];
+      }
+      return null;
+    }
+    function syncTag(email) {
+      const s = _lookupSync(email);
+      if (!s) return '<span class="tag" style="opacity:.4">—</span>';
+      if (s === 'synced') return '<span class="tag ok">✅ 已同步</span>';
+      if (s === 'pending_upload') return '<span class="tag" style="color:#ffa500">⬆️ 待上传</span>';
+      if (s === 'remote_only') return '<span class="tag" style="color:#6c5ce7">⬇️ 仅远程</span>';
+      return '<span class="tag" style="opacity:.4">—</span>';
+    }
+    function getSyncOrder(email) {
+      const s = _lookupSync(email);
+      if (!s) return 1;
+      if (s === 'pending_upload' || s === 'remote_only') return 0;
+      if (s === 'synced') return 2;
+      return 1;
+    }
+    function renderAccounts() {
+      const b = document.getElementById('accBody');
+      if (!accs.length) { b.innerHTML = '<tr><td colspan="6" class="empty">暂无注册账号</td></tr>'; updatePagination(0); return; }
+      // 排序: 未同步在前, 已同步在后
+      const sorted = [...accs].sort((a, b) => getSyncOrder(a.email) - getSyncOrder(b.email));
+      const total = sorted.length;
+      const totalPages = Math.ceil(total / perPage);
+      if (curPage > totalPages) curPage = totalPages;
+      if (curPage < 1) curPage = 1;
+      const start = (curPage - 1) * perPage;
+      const pageItems = sorted.slice(start, start + perPage);
+      b.innerHTML = pageItems.map((a, i) => `
+    <tr>
+      <td style="text-align:center"><input type="checkbox" class="chk acc-chk" data-idx="${a.index}"></td>
+      <td>${start + i + 1}</td>
+      <td style="font-family:var(--mono);font-size:.8rem">${escHTML(a.email)}</td>
+      <td style="font-family:var(--mono);font-size:.8rem">••••••••</td>
+      <td><span class="tag ${a.oauth_status.includes('ok') ? 'ok' : 'err'}">${escHTML(a.oauth_status || '—')}</span></td>
+      <td>${syncTag(a.email)}</td>
+    </tr>
+  `).join('');
+      updatePagination(total);
+    }
+    function updatePagination(total) {
+      const totalPages = Math.max(1, Math.ceil(total / perPage));
+      document.getElementById('pageInfo').textContent = `共 ${total} 个账号`;
+      document.getElementById('pageCur').textContent = curPage;
+      document.getElementById('pageTotal').textContent = totalPages;
+    }
+    function prevPage() { if (curPage > 1) { curPage--; renderAccounts(); } }
+    function nextPage() { const tp = Math.ceil(accs.length / perPage); if (curPage < tp) { curPage++; renderAccounts(); } }
+    function changePageSize() { perPage = +document.getElementById('pageSize').value; curPage = 1; renderAccounts(); }
+    function escHTML(s) { const d = document.createElement('span'); d.textContent = s; return d.innerHTML; }
+    function toggleAll() {
+      const c = document.getElementById('selAll').checked;
+      document.querySelectorAll('.acc-chk').forEach(cb => cb.checked = c);
+    }
+    function selectedIdxs() { return [...document.querySelectorAll('.acc-chk:checked')].map(c => +c.dataset.idx); }
+
+    async function deleteAccounts(mode) {
+      if (mode === 'all' && !confirm('确认清空全部账号记录？')) return;
+      const indices = mode === 'selected' ? selectedIdxs() : [];
+      if (mode === 'selected' && !indices.length) { toast('请先勾选账号', 'err'); return; }
+      const d = await fetch('/api/accounts', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode, indices }) }).then(r => r.json());
+      toast(`已删除 ${d.deleted} 个账号`);
+      document.getElementById('selAll').checked = false;
+      loadAccounts();
+    }
+
+    async function exportOAuth(mode, type) {
+      const indices = mode === 'selected' ? selectedIdxs() : [];
+      if (mode === 'selected' && !indices.length) { toast('请先勾选', 'err'); return; }
+      toast('正在打包凭据...');
+      const res = await fetch('/api/export', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode, type, indices }) });
+      if (!res.ok) { toast('导出失败', 'err'); return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await res.blob());
+      a.download = `codex_export_${Date.now()}.zip`;
+      a.click();
+      toast('ZIP 下载完成');
+    }
+
+    // ── Task ──
+    function setRunning(r) {
+      const pill = document.getElementById('statusPill'), txt = document.getElementById('statusTxt');
+      const s = document.getElementById('btnStart'), t = document.getElementById('btnStop');
+      if (r) { pill.className = 'status-pill running'; txt.textContent = '注册进行中'; s.style.display = 'none'; t.style.display = ''; }
+      else { pill.className = 'status-pill'; txt.textContent = '系统就绪'; s.style.display = ''; t.style.display = 'none'; loadAccounts(); loadSyncStatus(); const sb = document.getElementById('btnSync'); if (sb) { sb.disabled = false; sb.textContent = '🔄 同步到 CPA'; } }
+    }
+    async function startTask() {
+      await saveConfig();
+      const res = await fetch('/api/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: +g('regCount') || 1, workers: +g('regWorkers') || 1, proxy: g('cfgProxy') }) });
+      const d = await res.json();
+      if (d.ok) { clearLog(); setRunning(true); startSSE(); toast('任务已启动'); }
+      else toast(d.error || '启动失败', 'err');
+    }
+    async function stopTask() { await fetch('/api/stop', { method: 'POST' }); toast('已发送停止信号'); }
+
+    async function syncCPA() {
+      const btn = document.getElementById('btnSync');
+      btn.disabled = true;
+      btn.textContent = '⏳ 同步中...';
+      clearLog();
+      try {
+        const res = await fetch('/api/sync-cpa', { method: 'POST' });
+        const d = await res.json();
+        if (d.ok) {
+          toast('CPA 同步任务已启动');
+          startSSE();
+        } else {
+          toast(d.error || '同步失败', 'err');
+          btn.disabled = false;
+          btn.textContent = '🔄 同步到 CPA';
+        }
+      } catch (e) {
+        toast('同步请求异常: ' + e, 'err');
+        btn.disabled = false;
+        btn.textContent = '🔄 同步到 CPA';
+      }
+    }
+
+    function clearLog() { document.getElementById('logArea').innerHTML = ''; }
+
+    // ── 高性能日志渲染：rAF 批量 DOM 更新 ──
+    let _logBuffer = [];
+    let _logRaf = null;
+
+    function appendLog(text) {
+      _logBuffer.push(text);
+      if (!_logRaf) {
+        _logRaf = requestAnimationFrame(_flushLogs);
+      }
+    }
+
+    function _flushLogs() {
+      _logRaf = null;
+      if (!_logBuffer.length) return;
+      const area = document.getElementById('logArea');
+      const frag = document.createDocumentFragment();
+      const lines = _logBuffer;
+      _logBuffer = [];
+      for (let i = 0; i < lines.length; i++) {
+        const text = lines[i];
+        const div = document.createElement('div');
+        div.className = 'log';
+        if (text.includes('[OK]') || text.includes('✅') || text.includes('成功')) div.classList.add('ok');
+        else if (text.includes('[FAIL]') || text.includes('❌') || text.includes('失败') || text.includes('Traceback')) div.classList.add('err');
+        else if (text.includes('⚠️') || text.includes('警告')) div.classList.add('wrn');
+        else if (text.includes('[OTP]') || text.includes('[OAuth]') || text.includes('[DEBUG]')) div.classList.add('inf');
+        else if (text.startsWith('===') || text.startsWith('###')) div.classList.add('hi');
+        div.textContent = text;
+        frag.appendChild(div);
+      }
+      // 判断用户是否在底部附近（50px 容差）
+      const atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 50;
+      area.appendChild(frag);
+      if (atBottom) area.scrollTop = area.scrollHeight;
+    }
+
+    function startSSE() {
+      if (sseSource) sseSource.close();
+      sseSource = new EventSource('/api/logs');
+      sseSource.onmessage = e => {
+        if (e.data === '__TASK_DONE__') { setRunning(false); sseSource.close(); sseSource = null; toast('全部任务完成 🎉'); return; }
+        appendLog(e.data);
+      };
+    }
+
+    // ── Keepalive ──
+    let kaTimer = null;
+
+    async function startKeepalive() {
+      const res = await fetch('/api/keepalive/start', { method: 'POST' });
+      const d = await res.json();
+      if (d.ok) {
+        toast('保活已启动');
+        startSSE();
+        pollKeepaliveStatus();
+      } else toast(d.error || '启动失败', 'err');
+    }
+
+    async function stopKeepalive() {
+      await fetch('/api/keepalive/stop', { method: 'POST' });
+      toast('保活已停止');
+      setTimeout(pollKeepaliveStatus, 500);
+    }
+
+    async function pollKeepaliveStatus() {
+      try {
+        const d = await fetch('/api/keepalive/status').then(r => r.json());
+        const startBtn = document.getElementById('btnKaStart');
+        const stopBtn = document.getElementById('btnKaStop');
+        const statusEl = document.getElementById('kaStatus');
+        const detailEl = document.getElementById('kaDetail');
+        const resultEl = document.getElementById('kaResult');
+
+        if (d.running) {
+          startBtn.style.display = 'none';
+          stopBtn.style.display = '';
+          statusEl.textContent = '🟢 运行中';
+          statusEl.style.color = '#27ae60';
+          if (d.next_run) {
+            detailEl.textContent = ' · 下次执行: ' + d.next_run.replace('T', ' ');
+          }
+          if (!sseSource) startSSE();
+        } else {
+          startBtn.style.display = '';
+          stopBtn.style.display = 'none';
+          statusEl.textContent = '已停止';
+          statusEl.style.color = '';
+          detailEl.textContent = d.last_run ? (' · 上次执行: ' + d.last_run.replace('T', ' ')) : '';
+        }
+
+        if (d.last_result) {
+          resultEl.style.display = '';
+          const r = d.last_result;
+          resultEl.innerHTML = `上次结果: 检测 <b>${r.total_checked}</b> | 存活 <b style="color:#27ae60">${r.alive}</b> | 死亡 <b style="color:#e74c3c">${r.dead}</b> | 补充 <b style="color:#3498db">${r.registered}</b>`;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    function startKaPoll() {
+      if (kaTimer) clearInterval(kaTimer);
+      kaTimer = setInterval(pollKeepaliveStatus, 10000);
+    }
+
+    // ── Init ──
+    window.addEventListener('DOMContentLoaded', () => {
+      loadConfig();
+      loadAccounts();
+      loadSyncStatus();
+      fetch('/api/status').then(r => r.json()).then(d => { if (d.running) { setRunning(true); startSSE(); } });
+      pollKeepaliveStatus();
+      startKaPoll();
+      // 监听 sidebar 所有输入变化
+      document.querySelector('.sidebar').addEventListener('input', _checkDirty);
+      document.querySelector('.sidebar').addEventListener('change', _checkDirty);
+    });
+  </script>
+</body>
+
+</html>

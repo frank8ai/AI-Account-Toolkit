@@ -1,159 +1,172 @@
-# CPAtools - Codex 账号管理工具
+# CPAtools
 
-## 项目介绍
+ChatGPT 账号全自动管理工具，支持批量注册、自动维护和 Token 管理。
 
-CPAtools 是一个专为管理 Codex 账号设计的工具，主要用于批量检查和清理失效的 Codex 账号。该工具通过 HTTP 请求验证账号状态，并可以自动删除 401 失效的账号，提高账号管理效率。
+## 项目简介
 
-## 功能特性
+CPAtools 是一个专门用于管理 ChatGPT 账号的工具，通过自动化流程实现账号的批量注册、健康状态检测和维护。该工具集成了邮件网关功能，能够自动处理 OpenAI 的验证码，实现全流程自动化。
 
-- ✅ 批量检查 Codex 账号状态
-- ✅ 自动识别 401 失效账号
-- ✅ 支持并发操作，提高处理速度
-- ✅ 支持从 HAR 文件自动提取配置
-- ✅ 支持交互模式和命令行模式
-- ✅ 可自定义过滤条件（类型、提供者）
-- ✅ 详细的进度和结果报告
+## 功能特点
 
-## 核心文件
+- **全自动注册**：自动完成邮箱申请、验证码获取、账号创建等流程
+- **健康状态检测**：定期检查账号有效性，自动清理失效账号
+- **内存邮件网关**：内置邮件服务器，处理 OpenAI 验证码
+- **Cloudflare 集成**：支持通过 Cloudflare Worker 接收邮件
+- **代理支持**：可配置代理服务器，提高注册成功率
+- **自动上传**：将生成的 Token 自动上传到 CLIProxyAPI
+- **智能延迟**：根据注册结果动态调整注册间隔
 
-- `clean_codex_accounts.py` - 主脚本，用于检查和删除失效账号
-- `config.son` - 配置文件，存储脚本运行参数
+## 技术栈
+
+- Python 3.7+
+- curl-cffi
+- requests
+- http.server
+- threading
+
+## 安装指南
+
+### 1. 克隆项目
+
+```bash
+git clone <repository-url>
+cd AI-Account-Toolkit/CPAtools
+```
+
+### 2. 安装依赖
+
+```bash
+pip install curl-cffi requests
+```
 
 ## 配置说明
 
-编辑 `config.son` 文件，填入以下信息：
+### 1. Cloudflare 配置
 
-```json
-{
-  "base_url": "你的CPA地址",
-  "cpa_password": "你的CPA密码",
-  "target_type": "codex",
-  "provider": "",
-  "workers": 200,
-  "delete_workers": 40,
-  "timeout": 10,
-  "retries": 1,
-  "user_agent": "codex_cli_rs/0.76.0 (Debian 13.0.0; x86_64) WindowsTerminal",
-  "chatgpt_account_id": "",
-  "output": "invalid_codex_accounts.json"
-}
+1. **配置 Email Routing**：
+   - 登录 Cloudflare 控制台
+   - 进入 `Email` → `Email Routing`
+   - 添加您的域名并配置路由规则
+
+2. **创建 Worker**：
+   - 进入 `Workers & Pages`
+   - 创建新的 Worker
+   - 复制以下代码并部署：
+
+```javascript
+export default {
+  async email(message, env, ctx) {
+    const rawEmail = await new Response(message.raw).text();
+    const vps_url = "http://{您的服务器IP}:8080/webhook";
+    await fetch(vps_url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: message.to,
+        from: message.from,
+        raw: rawEmail
+      })
+    });
+  }
+};
 ```
 
-**配置参数说明：**
+### 2. 脚本配置
 
-- `base_url` - CPA 服务的基础 URL
-- `cpa_password` - CPA 服务的密码（用于生成管理 token）
-- `target_type` - 目标账号类型，默认为 "codex"
-- `provider` - 账号提供者（可选）
-- `workers` - 检测并发数
-- `delete_workers` - 删除并发数
-- `timeout` - 请求超时时间（秒）
-- `retries` - 失败重试次数
-- `user_agent` - 请求头中的 User-Agent
-- `chatgpt_account_id` - ChatGPT 账号 ID（可选）
-- `output` - 失效账号输出文件
-
-## 使用方法
-
-### 交互模式
-
-在命令行中直接运行脚本：
-
-```bash
-python clean_codex_accounts.py
-```
-
-然后根据提示选择操作：
-
-1. 仅检查 401 并导出
-2. 检查 401 并立即删除
-3. 直接删除 output 文件中的账号
-0. 退出
-
-### 命令行模式
-
-**仅检查模式：**
-
-```bash
-python clean_codex_accounts.py --config config.son
-```
-
-**检查并删除模式：**
-
-```bash
-python clean_codex_accounts.py --config config.son --delete
-```
-
-**从 output 文件删除模式：**
-
-```bash
-python clean_codex_accounts.py --config config.son --delete-from-output
-```
-
-**使用 HAR 文件自动提取配置：**
-
-```bash
-python clean_codex_accounts.py --har your_har_file.har
-```
-
-## 命令行参数
+脚本支持以下命令行参数：
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `--config` | 配置文件路径 | config.json |
-| `--base-url` | CPA 服务基础 URL | 你的CPA地址 |
-| `--token` | 管理 token | 环境变量 MGMT_TOKEN |
-| `--har` | 从 HAR 文件提取配置 | None |
-| `--target-type` | 按账号类型过滤 | codex |
-| `--provider` | 按提供者过滤 | None |
-| `--workers` | 检测并发数 | 120 |
-| `--delete-workers` | 删除并发数 | 20 |
-| `--timeout` | 请求超时时间 | 12 |
-| `--retries` | 失败重试次数 | 1 |
-| `--user-agent` | User-Agent | codex_cli_rs/0.76.0 |
-| `--chatgpt-account-id` | ChatGPT 账号 ID | 环境变量 CHATGPT_ACCOUNT_ID |
-| `--output` | 失效账号输出文件 | invalid_codex_accounts.json |
-| `--delete` | 开启删除模式 | False |
-| `--delete-from-output` | 从输出文件删除 | False |
-| `--yes` | 删除时跳过确认 | False |
+| --base-url | CLIProxyAPI 地址 | http://localhost:8317 |
+| --mgmt-key | 管理密钥（必填） | - |
+| --target | 账号目标数量 | 100 |
+| --check-interval | 检测间隔（秒） | 3600 |
+| --reg-delay-min | 最小注册延迟（秒） | 60 |
+| --reg-delay-max | 最大注册延迟（秒） | 120 |
+| --proxy | 代理地址 | None |
+| --domain | 邮箱域名 | example.com |
 
-## 依赖项
+## 使用方法
 
-- Python 3.6+
-- requests
-- aiohttp（异步请求）
-
-## 安装依赖
+### 启动服务
 
 ```bash
-pip install aiohttp requests
+python manager.py --mgmt-key your-management-key --domain your-domain.com --target 50
+```
+
+### 完整示例
+
+```bash
+python manager.py \
+  --base-url http://localhost:8317 \
+  --mgmt-key your-secret-key \
+  --target 100 \
+  --check-interval 3600 \
+  --reg-delay-min 60 \
+  --reg-delay-max 120 \
+  --proxy http://your-proxy:port \
+  --domain your-domain.com
 ```
 
 ## 工作流程
 
-1. 加载配置信息（从配置文件、命令行或 HAR 文件）
-2. 获取所有认证文件列表
-3. 过滤符合条件的账号
-4. 并发检查账号状态
-5. 识别 401 失效账号
-6. 导出失效账号到文件
-7. （可选）删除失效账号
+1. **启动邮件网关**：在 8080 端口启动内存邮件网关服务器
+2. **健康状态检查**：定期检查已注册账号的有效性
+3. **账号注册**：当账号数量低于目标时，自动执行注册流程
+4. **验证码处理**：通过 Cloudflare Worker 接收并处理验证码
+5. **Token 上传**：将成功注册的账号 Token 上传到 CLIProxyAPI
+6. **智能调整**：根据注册结果动态调整注册间隔
+
+## 注册流程
+
+1. **申请邮箱**：生成随机邮箱地址
+2. **OAuth 初始化**：生成授权 URL 和状态参数
+3. **Sentinel 验证**：处理 OpenAI 的安全验证
+4. **提交注册**：提交邮箱和密码
+5. **发送验证码**：请求 OpenAI 发送验证码
+6. **接收验证码**：通过邮件网关接收并提取验证码
+7. **验证 OTP**：提交验证码进行验证
+8. **创建账户**：完成账户创建
+9. **选择 Workspace**：选择默认工作区
+10. **获取 Token**：获取访问令牌和刷新令牌
+11. **上传 Token**：将 Token 上传到 CLIProxyAPI
+
+## 常见问题
+
+### 1. 验证码收不到怎么办？
+
+- 确保 Cloudflare Worker 配置正确
+- 检查服务器 8080 端口是否开放
+- 确认域名 MX 记录配置正确
+
+### 2. 注册失败率高怎么办？
+
+- 使用高质量的代理
+- 增加注册延迟
+- 检查网络环境是否被 OpenAI 限制
+
+### 3. 如何提高注册成功率？
+
+- 使用稳定的代理 IP
+- 合理设置注册间隔
+- 确保邮箱域名配置正确
+
+### 4. 如何监控注册状态？
+
+- 查看控制台输出的日志
+- 检查 CLIProxyAPI 中的账号数量
 
 ## 注意事项
 
-1. 使用前请确保已正确配置 `base_url` 和 `cpa_password`
-2. 大规模删除操作前请谨慎确认，建议先执行检查模式
-3. 调整并发数以适应你的网络环境，避免请求过多导致服务拒绝
-4. 如遇到网络问题，可适当增加 `timeout` 和 `retries` 值
+1. **邮箱域名**：需要拥有一个域名并配置 MX 记录指向 Cloudflare
+2. **代理设置**：建议使用高质量的代理，避免 IP 被封禁
+3. **频率控制**：合理设置注册间隔，避免触发 OpenAI 的风控机制
+4. **安全配置**：管理密钥应妥善保管，避免泄露
 
-## 输出说明
+## 许可证
 
-- 执行过程中会显示详细的进度信息
-- 检查完成后会生成 `invalid_codex_accounts.json` 文件，包含所有 401 失效的账号信息
-- 删除操作会显示成功和失败的账号数量
+MIT License
 
-## 故障排除
+## 贡献
 
-- **缺少管理 token**：请确保在配置文件中设置了 `cpa_password`，或通过 `--token` 参数提供
-- **网络错误**：检查网络连接和代理设置，调整 `timeout` 和 `retries` 参数
-- **依赖错误**：执行 `pip install aiohttp requests` 安装所需依赖
+欢迎提交 Issue 和 Pull Request 来改进这个项目！
