@@ -39,6 +39,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Web UI (Streamlit) 操作界面
   - 兑换码管控系统
 
+- **OpenAI 相关子模块**
+  - **chatgpt-creator** (submodule) - ChatGPT 账号创建工具
+  - **openai-oauth** (submodule) - OpenAI OAuth 认证工具
+
+- **Gemini 相关子模块**
+  - **gemini-balance-do** (submodule) - Gemini 余额查询工具
+
+- **Codex 相关子模块**
+  - **codex-lb** (submodule) - Codex 负载均衡工具
+
+- **Claude 相关子模块**
+  - **claude-key-switch** (submodule) - Claude 密钥切换工具
+
+- **通用工具子模块**
+  - **Ultimate-openai-gemini-claude-api-key-scraper** (submodule) - 多平台 API 密钥抓取工具
+
 ### Updated
 
 - 项目结构优化，整合多个注册工具

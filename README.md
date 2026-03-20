@@ -22,7 +22,19 @@ AI-Account-Toolkit/
 ├── ClashVerge_              # ClashVerge 非港轮询脚本
 ├── ABCard/                  # ChatGPT Business/Plus 自动开通工具（子模块）
 ├── any-auto-register/        # 多平台账号自动注册工具（子模块）
-└── cloudflare_temp_email/    # Cloudflare 临时邮箱服务（子模块）
+├── cloudflare_temp_email/    # Cloudflare 临时邮箱服务（子模块）
+└── submodules/              # 分类子模块目录
+    ├── openai/              # OpenAI 相关子模块
+    │   ├── chatgpt-creator/ # ChatGPT 账号创建工具
+    │   └── openai-oauth/    # OpenAI OAuth 认证工具
+    ├── gemini/              # Gemini 相关子模块
+    │   └── gemini-balance-do/ # Gemini 余额查询工具
+    ├── codex/               # Codex 相关子模块
+    │   └── codex-lb/        # Codex 负载均衡工具
+    ├── claude/              # Claude 相关子模块
+    │   └── claude-key-switch/ # Claude 密钥切换工具
+    └── general/             # 通用工具子模块
+        └── Ultimate-openai-gemini-claude-api-key-scraper/ # 多平台 API 密钥抓取工具
 ```
 
 ## 项目导航
@@ -214,7 +226,7 @@ done
 
 ### 2. 初始化子模块
 
-本项目包含三个子模块，需要初始化：
+本项目包含多个子模块，需要初始化：
 
 ```bash
 # 初始化子模块
@@ -226,6 +238,12 @@ git submodule update
 - `any-auto-register/` - 多平台账号自动注册工具
 - `cloudflare_temp_email/` - Cloudflare 临时邮箱服务
 - `ABCard/` - ChatGPT Business/Plus 自动开通工具
+- `submodules/openai/chatgpt-creator/` - ChatGPT 账号创建工具
+- `submodules/openai/openai-oauth/` - OpenAI OAuth 认证工具
+- `submodules/gemini/gemini-balance-do/` - Gemini 余额查询工具
+- `submodules/codex/codex-lb/` - Codex 负载均衡工具
+- `submodules/claude/claude-key-switch/` - Claude 密钥切换工具
+- `submodules/general/Ultimate-openai-gemini-claude-api-key-scraper/` - 多平台 API 密钥抓取工具
 
 ### 3. 配置设置
 
@@ -294,5 +312,5 @@ python any-auto-register/main.py
 
 ---
 
-**更新日期**：2026-03-19
+**更新日期**：2026-03-20
 **版本**：2.0.0
