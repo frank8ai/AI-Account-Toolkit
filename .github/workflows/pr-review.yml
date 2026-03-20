@@ -176,16 +176,18 @@ jobs:
           STATS=$(git diff --stat origin/$BASE_REF...HEAD 2>/dev/null | tail -1)
           echo "$STATS" >> $GITHUB_STEP_SUMMARY
 
-  # ==================== AI 代码审查（依赖静态检查通过）====================
+  # ==================== AI 代码审查（仅内部 PR）====================
   ai-review:
     name: 🤖 AI 代码审查
     runs-on: ubuntu-latest
     needs: [security-check, auto-check]
+    # fork PR 没有 secrets，跳过 AI 审查
     if: |
       needs.security-check.outputs.safe_to_run == 'true' &&
       needs.auto-check.result == 'success' &&
       needs.auto-check.outputs.has_reviewable_changes == 'true' &&
-      vars.ENABLE_AI_REVIEW != 'false'
+      vars.ENABLE_AI_REVIEW != 'false' &&
+      github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
     
     steps:
       # 先检出主分支（获取最新的 .github/scripts）
@@ -323,7 +325,7 @@ jobs:
     name: 💬 审查报告
     runs-on: ubuntu-latest
     needs: [security-check, auto-check]
-    # fork PR 没有评论权限，跳过评论步骤
+    # 仅内部 PR 才评论
     if: always() && github.event_name == 'pull_request' && needs.security-check.outputs.safe_to_run == 'true' && github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
     
     steps:
