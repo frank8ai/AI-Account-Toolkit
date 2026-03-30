@@ -51,7 +51,10 @@
 	url = https://github.com/dreamhunter2333/cloudflare_temp_email.git
 [submodule "packages/general/mregister"]
 	path = packages/general/mregister
-	url = https://github.com/Maishan-Inc/MREGISTER.git
+	url = https://github.com/shouma1/MREGISTER.git
 [submodule "packages/codex/codex-register"]
 	path = packages/codex/codex-register
 	url = https://github.com/kschen202115/codex_register.git
+[submodule "packages/general/real-random-taxfree-address"]
+	path = packages/general/real-random-taxfree-address
+	url = https://github.com/hotbob011/real-random-taxfree-address.git
